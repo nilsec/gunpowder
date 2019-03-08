@@ -47,9 +47,15 @@ class BalanceLabels(BatchFilter):
             The number of classes. Labels will be expected to be in the
             interval [0, ``num_classes``). Defaults to 2 for binary
             classification.
+
+        clip_range(``tuple`` of ``float``, optional):
+            
+            Limit class weights to min=clip_range[0], max=clip_range[1].
+            Defaults to 5 and 95% respectively. Needs to be in range [0,1].
     '''
 
-    def __init__(self, labels, scales, mask=None, slab=None, num_classes=2):
+    def __init__(self, labels, scales, mask=None, slab=None, num_classes=2, 
+                 clip_range=(0.05, 0.95)):
 
         self.labels = labels
         self.scales = scales
@@ -62,6 +68,14 @@ class BalanceLabels(BatchFilter):
 
         self.slab = slab
         self.num_classes = num_classes
+        
+        if len(clip_range)>2:
+            raise ValueError("Clip range needs to be of length 2.")
+        if clip_range[0] > 1 or clip_range[0] < 0:
+            raise ValueError("Clip range minimum needs to be between 0 and 1.")
+        if clip_range[1] > 1 or clip_range[1] < 0:
+            raise ValueError("Clip range maximum needs to be between 0 and 1.")
+        self.clip_range = clip_range
 
     def setup(self):
 
@@ -133,7 +147,7 @@ class BalanceLabels(BatchFilter):
         masked_in = scale.sum()
         classes, counts = np.unique(labels[np.nonzero(scale)], return_counts=True)
         fracs = counts.astype(float) / masked_in if masked_in > 0 else np.zeros(counts.size)
-        np.clip(fracs, 0.05, 0.95, fracs)
+        np.clip(fracs, clip_range[0], clip_range[1], fracs)
 
         # compute the class weights
         w_sparse = 1.0 / float(self.num_classes) / fracs
