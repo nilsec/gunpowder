@@ -238,7 +238,10 @@ class Predict(GenericPredict):
                 clear_devices=True)
 
         # restore variables from checkpoint
-        saver.restore(self.session, self.checkpoint)
+        if self.checkpoint is not None:
+            saver.restore(self.session, self.checkpoint)
+        else:
+            logger.warning("No checkpoint provided, proceed without weight restore")
 
     def __collect_outputs(self, request=None):
         '''Get a dict:
